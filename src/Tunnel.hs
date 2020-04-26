@@ -46,7 +46,7 @@ rrunTCPClient cfg app = bracket
       N.setSocketOption s N.RecvBuffer defaultRecvBufferSize
       N.setSocketOption s N.SendBuffer defaultSendBufferSize
       so_mark_val <- readIORef sO_MARK_Value
-      _ <- when (so_mark_val /= 0 && N.isSupportedSocketOption sO_MARK) (N.setSocketOption s sO_MARK so_mark_val)
+      when (so_mark_val /= 0 && N.isSupportedSocketOption sO_MARK) (N.setSocketOption s sO_MARK so_mark_val)
       return (s,addr)
     )
     (\r -> catch (N.close $ fst r) (\(_ :: SomeException) -> return ()))
@@ -208,6 +208,7 @@ runTunnelingServer endPoint@(host, port) isAllowed = do
 
   let srvSet = N.setReadBufferSize defaultRecvBufferSize $ N.serverSettingsTCP (fromIntegral port) (fromString host)
   void $ N.runTCPServer srvSet $ \sClient -> do
+    info $ "NEW incoming connection from " <> show (N.appSockAddr sClient)
     stream <- WS.makeStream (N.appRead sClient <&> \payload -> if payload == mempty then Nothing else Just payload) (N.appWrite sClient . toStrict . fromJust)
     runApp stream WS.defaultConnectionOptions (serverEventLoop isAllowed)
 
